@@ -121,6 +121,6 @@ scripts/publish-appcast.sh "$ZIP"
 echo
 echo "========================================"
 echo "  SegDown v$VERSION shipped!"
-echo "  GitHub : https://github.com/dinhanhthi/SegDown/releases/tag/v$VERSION"
-echo "  Appcast: https://dinhanhthi.github.io/SegDown/appcast.xml (live in ~1 min)"
+echo "  GitHub : https://github.com/Coprimal/SegDown/releases/tag/v$VERSION"
+echo "  Appcast: https://segdown.coprimal.dev/appcast.xml (live in ~1 min)"
 echo "========================================"

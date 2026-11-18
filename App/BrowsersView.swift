@@ -162,7 +162,7 @@ struct BrowsersView: View {
     private static var firefoxAddonURL: URL? {
         guard let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
         else { return nil }
-        return URL(string: "https://github.com/dinhanhthi/SegDown/releases/download/v\(version)/SegDown-firefox-\(version).xpi")
+        return URL(string: "https://github.com/Coprimal/SegDown/releases/download/v\(version)/SegDown-firefox-\(version).xpi")
     }
 
     private func lastConnected(_ bundleID: String) -> String {

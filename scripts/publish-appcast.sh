@@ -7,7 +7,8 @@
 # appcast.xml (so older items keep their original download URLs, and the history
 # survives a deleted release/ folder), copies the result back to the repo root,
 # commits, and pushes to main (the Pages workflow then deploys it to
-# https://dinhanhthi.github.io/SegDown/appcast.xml).
+# https://segdown.coprimal.dev/appcast.xml), then copies both feeds to the old-feed mirror
+# that builds <= 0.7.5 read (scripts/sync-feed-mirror.sh).
 #
 # The zip must already be notarized + stapled (build-and-notarize.sh) and the GitHub
 # Release must exist (publish-release.sh), since the appcast points at its asset URL.
@@ -36,7 +37,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-GH_REPO="dinhanhthi/SegDown"
+GH_REPO="Coprimal/SegDown"
 TEAM_ID="86H6CNLN4C"
 ARCHIVES="release/appcast-archives"
 
@@ -158,6 +159,12 @@ git add -- appcast.xml firefox-updates.json
 git commit -m "chore(release): appcast v$VERSION" -- appcast.xml firefox-updates.json
 git push origin main
 
+# Builds <= 0.7.5 read the old github.io feeds: copy both files there. The release is already
+# pushed, so a failure here only warns.
+echo "==> Syncing the old-feed mirror"
+scripts/sync-feed-mirror.sh \
+  || echo "warning: old-feed mirror not synced - builds <= 0.7.5 miss v$VERSION until you rerun: scripts/sync-feed-mirror.sh" >&2
+
 echo
 echo "Done. appcast.xml pushed - Pages deploy triggered (~1 min to go live)."
-echo "  Verify: curl -fsSL https://dinhanhthi.github.io/SegDown/appcast.xml | grep shortVersionString"
+echo "  Verify: curl -fsSL https://segdown.coprimal.dev/appcast.xml | grep shortVersionString"

@@ -1,10 +1,12 @@
 name: Deploy appcast
 
 # Publishes the Sparkle feed (appcast.xml) and the Firefox add-on update manifest (firefox-updates.json)
-# to GitHub Pages. The app's Sparkle feed (SUFeedURL) points at https://dinhanhthi.github.io/SegDown/appcast.xml,
-# the add-on's update_url at https://dinhanhthi.github.io/SegDown/firefox-updates.json.
+# to GitHub Pages. The app's Sparkle feed (SUFeedURL) points at https://segdown.coprimal.dev/appcast.xml,
+# the add-on's update_url at https://segdown.coprimal.dev/firefox-updates.json.
 # Each Pages deploy replaces the whole site, so both files are staged every time.
-# Requires Settings > Pages > Source = "GitHub Actions".
+# Requires Settings > Pages > Source = "GitHub Actions" and the custom domain segdown.coprimal.dev.
+# Builds <= 0.7.5 read the old dinhanhthi.github.io/SegDown/ copies, which
+# scripts/sync-feed-mirror.sh keeps in sync (see CONTRIBUTING.md "Update feed").
 
 on:
   push:

@@ -46,7 +46,7 @@ SIGN_ID="Developer ID Application"
 TEAM_ID="86H6CNLN4C"
 # The only update feed the app may use. If the feed ever moves, change it here AND in
 # SUFeedURL (App/Info.plist) in the same reviewed commit.
-EXPECTED_FEED_URL="https://dinhanhthi.github.io/SegDown/appcast.xml"
+EXPECTED_FEED_URL="https://segdown.coprimal.dev/appcast.xml"
 
 # Submit to Apple and FAIL the script on anything other than "Accepted". notarytool exits 0
 # even when the status is Invalid, so without this an Invalid result sails on into stapler and

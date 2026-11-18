@@ -62,10 +62,10 @@ xcrun notarytool history --keychain-profile "${SEGDOWN_NOTARY_PROFILE:-apple-not
 
 # 5. GitHub CLI and Pages source
 gh auth status
-gh api repos/dinhanhthi/SegDown/pages --jq .build_type
+gh api repos/Coprimal/SegDown/pages --jq .build_type
 
 # 6. Repo visibility
-gh repo view dinhanhthi/SegDown --json visibility --jq .visibility
+gh repo view Coprimal/SegDown --json visibility --jq .visibility
 
 # 7. Firefox add-on signing: AMO API key in the Keychain, jq, node >= 20
 security find-generic-password -s segdown-amo-jwt-issuer >/dev/null
@@ -100,7 +100,7 @@ command -v jq && command -v npx && node -p 'process.versions.node.split(".")[0]'
   subject (that would bump the version twice). Any other tracked change: stop and tell the user
   to commit or stash it.
 - Check 3: both commands must print the same non-empty value (this pins only the key; the exact
-  `SUFeedURL`, `https://dinhanhthi.github.io/SegDown/appcast.xml`, is pinned by
+  `SUFeedURL`, `https://segdown.coprimal.dev/appcast.xml`, is pinned by
   `build-and-notarize.sh` in `App/Info.plist` and in the built app). If `generate_keys` is not found,
   build once first (`xcodegen generate && xcodebuild -project SegDown.xcodeproj -scheme SegDown -configuration Debug build`),
   then rerun the check.
@@ -159,16 +159,16 @@ command -v jq && command -v npx && node -p 'process.versions.node.split(".")[0]'
   (other commits may sit on top of an interrupted `scripts/ship.sh`). It never blocks a normal next
   release: before Step B4 bumps, `project.yml` still holds the last shipped version, whose appcast
   entry exists, so that case goes to (d). List the release assets:
-  `gh release view vX.Y.Z --repo dinhanhthi/SegDown --json assets --jq '.assets[].name'`.
+  `gh release view vX.Y.Z --repo Coprimal/SegDown --json assets --jq '.assets[].name'`.
   - Release missing (the command fails) → if `release/export/SegDown-X.Y.Z.zip` exists, write
     the notes file from the `## [X.Y.Z]` section of `CHANGELOG.md`:
     `awk '/^## \[X\.Y\.Z\]/{f=1;next} f&&/^## /{exit} f' CHANGELOG.md > release/export/SegDown-X.Y.Z.md`,
-    then `gh release create vX.Y.Z release/export/SegDown-X.Y.Z.zip --repo dinhanhthi/SegDown --title "SegDown X.Y.Z" --notes-file release/export/SegDown-X.Y.Z.md`
+    then `gh release create vX.Y.Z release/export/SegDown-X.Y.Z.zip --repo Coprimal/SegDown --title "SegDown X.Y.Z" --notes-file release/export/SegDown-X.Y.Z.md`
     and, if `release/export/SegDown-X.Y.Z.dmg` exists,
-    `gh release upload vX.Y.Z release/export/SegDown-X.Y.Z.dmg --repo dinhanhthi/SegDown`.
+    `gh release upload vX.Y.Z release/export/SegDown-X.Y.Z.dmg --repo Coprimal/SegDown`.
     Then upload the extension zip as in the next bullet.
   - Release exists but `SegDown-X.Y.Z.zip`, `SegDown-X.Y.Z.dmg` or `SegDown-extension-X.Y.Z.zip`
-    is missing → `gh release upload vX.Y.Z release/export/<missing file> --repo dinhanhthi/SegDown`.
+    is missing → `gh release upload vX.Y.Z release/export/<missing file> --repo Coprimal/SegDown`.
   - The extension zip is never a stop reason: if `release/export/SegDown-extension-X.Y.Z.zip` is
     gone, regenerate it from the tag (fetch the tag first with `git fetch origin tag vX.Y.Z` if
     `git tag -l vX.Y.Z` is empty):
@@ -184,12 +184,12 @@ command -v jq && command -v npx && node -p 'process.versions.node.split(".")[0]'
     continue; `publish-appcast.sh` then only warns and leaves `firefox-updates.json` unchanged.
   - The Release has `SegDown-firefox-X.Y.Z.xpi` but `release/export/` does not → download it
     before `publish-appcast.sh` (never re-sign: AMO refuses a version it already signed):
-    `gh release download vX.Y.Z --repo dinhanhthi/SegDown --pattern 'SegDown-firefox-X.Y.Z.xpi' --dir release/export`.
+    `gh release download vX.Y.Z --repo Coprimal/SegDown --pattern 'SegDown-firefox-X.Y.Z.xpi' --dir release/export`.
   - A local app zip or DMG needed above is missing → STOP: "The notarized build of vX.Y.Z is
     gone. Delete the tag (docs/RELEASING.md §2 rollback) and run /cf-ship again."
   - Then ALWAYS fetch the published zip, into its own fresh dir (never over
     `release/export/`), so the appcast signs the bytes on GitHub:
-    `rm -rf release/download && mkdir -p release/download && gh release download vX.Y.Z --repo dinhanhthi/SegDown --pattern 'SegDown-X.Y.Z.zip' --dir release/download`.
+    `rm -rf release/download && mkdir -p release/download && gh release download vX.Y.Z --repo Coprimal/SegDown --pattern 'SegDown-X.Y.Z.zip' --dir release/download`.
   - Then run `scripts/publish-appcast.sh release/download/SegDown-X.Y.Z.zip`. Before signing,
     the script requires the downloaded zip to have the same SHA-256 as
     `release/export/SegDown-X.Y.Z.zip` when that exists, and always checks the app inside: only
@@ -354,7 +354,22 @@ existing tag `vX.Y.Z`, locally or on origin (use Resume), missing AMO Keychain i
 4. `publish-appcast.sh` — verifies the zip (see Resume (c)), `generate_appcast --account SegDown`,
    checks the new item's GitHub URL and EdDSA signature, adds the `.xpi` to
    `firefox-updates.json`, commits `chore(release): appcast vX.Y.Z` and pushes `appcast.xml` and
-   `firefox-updates.json` (Pages deploys them in ~1 min).
+   `firefox-updates.json` (Pages deploys them in ~1 min), then copies both files to the old-feed
+   mirror that builds <= 0.7.5 read (`scripts/sync-feed-mirror.sh`, see `CONTRIBUTING.md`).
+
+Then verify the feeds before the summary:
+
+```bash
+# The pages.yml run of the appcast commit (retry until it prints an id; `-L 1` may show the previous run)
+RUN=$(gh run list --commit "$(git rev-parse HEAD)" --workflow pages.yml --json databaseId --jq '.[0].databaseId // empty')
+gh run watch "$RUN" --exit-status
+curl -fsSL https://segdown.coprimal.dev/appcast.xml | grep -F '/vX.Y.Z/'
+curl -fsSL https://segdown.coprimal.dev/firefox-updates.json | grep -F '/vX.Y.Z/'   # only when the .xpi shipped
+```
+
+`ship.sh` must have printed `mirror updated` or `mirror already current` for both files; after a
+`warning: old-feed mirror not synced`, run `scripts/sync-feed-mirror.sh` and report it. The same
+checks follow `publish-appcast.sh` in Resume (c).
 
 If Keychain prompts appear (codesign, notarytool, generate_appcast), the user clicks **Always Allow**.
 
@@ -363,9 +378,9 @@ If Keychain prompts appear (codesign, notarytool, generate_appcast), the user cl
 ```
 Shipped (local flow):
   SegDown vX.Y.Z — notarized zip + dmg + extension zip + Firefox xpi on the GitHub Release
-  GitHub Release: https://github.com/dinhanhthi/SegDown/releases/tag/vX.Y.Z
-  Appcast: https://dinhanhthi.github.io/SegDown/appcast.xml
-  Firefox updates: https://dinhanhthi.github.io/SegDown/firefox-updates.json
+  GitHub Release: https://github.com/Coprimal/SegDown/releases/tag/vX.Y.Z
+  Appcast: https://segdown.coprimal.dev/appcast.xml
+  Firefox updates: https://segdown.coprimal.dev/firefox-updates.json
 ```
 
 ---

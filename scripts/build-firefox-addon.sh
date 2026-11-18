@@ -25,7 +25,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GECKO_ID="me@dinhanhthi.com"
-UPDATE_URL="https://dinhanhthi.github.io/SegDown/firefox-updates.json"
+UPDATE_URL="https://segdown.coprimal.dev/firefox-updates.json"
 WEB_EXT="web-ext@10.8.0"
 OUT_DIR="release/firefox"
 EXPORT_DIR="release/export"
