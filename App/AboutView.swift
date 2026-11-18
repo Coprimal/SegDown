@@ -1,9 +1,10 @@
-// The About page: logo, name, version, license, the GitHub link and copyright, straight on the window's glass.
+// The About page: logo, name, version, license, the author and GitHub links and copyright, straight on the window's glass.
 import AppKit
 import SwiftUI
 
 struct AboutView: View {
-    private static let repository = URL(string: "https://github.com/dinhanhthi/SegDown")!
+    private static let repository = URL(string: "https://github.com/Coprimal/SegDown")!
+    private static let author = URL(string: "https://coprimal.dev")!
 
     var body: some View {
         VStack(spacing: 10) {
@@ -17,7 +18,8 @@ struct AboutView: View {
                 .foregroundStyle(.secondary)
             Text("Licensed under MIT")
                 .foregroundStyle(.secondary)
-            Link("github.com/dinhanhthi/SegDown", destination: Self.repository)
+            Link("Coprimal", destination: Self.author)
+            Link("github.com/Coprimal/SegDown", destination: Self.repository)
             if let copyright = Self.copyright {
                 Text(copyright)
                     .font(.caption)

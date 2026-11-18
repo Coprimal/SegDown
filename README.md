@@ -30,7 +30,7 @@
    brew install yt-dlp ffmpeg deno
    ```
 
-2. Download `SegDown-X.Y.Z.dmg` from the [latest release](https://github.com/dinhanhthi/SegDown/releases/latest), drag SegDown to Applications and open it. It lives in the menu bar.
+2. Download `SegDown-X.Y.Z.dmg` from the [latest release](https://github.com/Coprimal/SegDown/releases/latest), drag SegDown to Applications and open it. It lives in the menu bar.
 
 Needs macOS 15 or later. SegDown updates itself; its Dependencies page shows a missing or outdated tool and updates it in one click.
 
@@ -98,4 +98,4 @@ To sign with your own team, change `DEVELOPMENT_TEAM` and `CODE_SIGN_IDENTITY` i
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE) © [Coprimal](https://coprimal.dev)

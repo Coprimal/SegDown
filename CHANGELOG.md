@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- SegDown now lives at [github.com/Coprimal/SegDown](https://github.com/Coprimal/SegDown). Updates come from segdown.coprimal.dev; older versions keep updating as before, in the app and in Firefox.
+
 ## [0.7.5] - 2026-11-11
 
 ### Added
