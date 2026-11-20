@@ -19,6 +19,8 @@ public actor JobRunner {
         "The site refused the download (HTTP 403/410). It may block yt-dlp; try `brew upgrade yt-dlp`."
     /// Time between SIGINT and SIGTERM when a job is cancelled.
     static let cancelGracePeriod: Duration = .seconds(3)
+    /// Time between two checks of a paused job (`waitWhilePaused`).
+    static let pausePollInterval: Duration = .milliseconds(200)
     /// Time between two sums of a running job's temp dir (`JobStatus.bytes` and the size cap).
     static let sizePollInterval: Duration = .milliseconds(500)
     /// Files `merge` writes into the temp dir; `SizeEstimate.countedFileNames` skips them.
@@ -35,6 +37,8 @@ public actor JobRunner {
         var task: Task<Void, Never>?
         var process: Process?
         var cancelled = false
+        /// Set by `pause(id:)`: the running process group is stopped and nothing new starts.
+        var paused = false
         /// Why the runner itself stopped the job (`JobError.sizeExceeded`); it then ends `failed`
         /// with this error instead of `cancelled`.
         var abortReason: JobError?
@@ -79,6 +83,11 @@ public actor JobRunner {
     public func cancel(id: String) {
         guard let entry = jobs[id], !entry.cancelled else { return }
         jobs[id]?.cancelled = true
+        // A stopped process only handles SIGINT once it runs again.
+        if entry.paused {
+            jobs[id]?.paused = false
+            Self.signalGroup(of: entry.process, SIGCONT)
+        }
         entry.task?.cancel()
         guard let process = entry.process, process.isRunning else { return }
         let pid = process.processIdentifier
@@ -87,6 +96,28 @@ public actor JobRunner {
             try? await Task.sleep(for: Self.cancelGracePeriod)
             self.terminate(id: id, pid: pid)
         }
+    }
+
+    /// Pauses job `id`: SIGSTOP to its running process's group (so yt-dlp's ffmpeg too), and no new
+    /// process or piece download starts until `resume(id:)`; pieces already in flight finish.
+    /// Unknown, cancelled or paused ids are ignored.
+    public func pause(id: String) {
+        guard let entry = jobs[id], !entry.cancelled, !entry.paused else { return }
+        jobs[id]?.paused = true
+        Self.signalGroup(of: entry.process, SIGSTOP)
+    }
+
+    /// Resumes job `id` paused by `pause(id:)`: SIGCONT to its process group. Other ids are ignored.
+    public func resume(id: String) {
+        guard let entry = jobs[id], entry.paused else { return }
+        jobs[id]?.paused = false
+        Self.signalGroup(of: entry.process, SIGCONT)
+    }
+
+    /// Sends `signal` to the process group of `process` (each child `Process` leads its own group).
+    private static func signalGroup(of process: Process?, _ signal: Int32) {
+        guard let process, process.isRunning else { return }
+        kill(-process.processIdentifier, signal)
     }
 
     /// Stops job `id` through `cancel(id:)` for `reason`, unless it is already being cancelled.
@@ -790,6 +821,7 @@ public actor JobRunner {
             var running = 0
             while running > 0 || !queue.isEmpty {
                 while running < jobs[id]?.pieceLimit ?? 1, !queue.isEmpty {
+                    try await waitWhilePaused(id)
                     if let deadline = notBefore {
                         notBefore = nil
                         try await Task.sleep(until: deadline)
@@ -991,6 +1023,14 @@ public actor JobRunner {
         if jobs[id]?.cancelled != false || Task.isCancelled { throw CancellationError() }
     }
 
+    /// Waits while job `id` is paused, then throws like `checkCancelled`.
+    private func waitWhilePaused(_ id: String) async throws {
+        while jobs[id]?.paused == true {
+            try await Task.sleep(for: Self.pausePollInterval)
+        }
+        try checkCancelled(id)
+    }
+
     /// Runs `executable` to completion, draining both pipes, and throws unless it exits with 0.
     /// `onLine` sees every stdout/stderr line (split on `\n` and `\r`) on a background thread.
     /// With a `timeout`, the process is terminated once it passes (it then fails, without cancelling the job).
@@ -998,7 +1038,7 @@ public actor JobRunner {
         _ tool: Tool, executable: URL, arguments: [String], jobID: String, timeout: Duration? = nil,
         onLine: @escaping @Sendable (ProcessIO.Stream, String) -> Void
     ) async throws {
-        try checkCancelled(jobID)
+        try await waitWhilePaused(jobID)
         let process = Process()
         process.executableURL = executable
         process.arguments = arguments

@@ -40,6 +40,8 @@ final class JobStore {
         /// The validated request, kept in memory for `retry(_:)`; `nil` for jobs loaded from the
         /// history (never recorded there: it holds the media URLs and headers).
         let request: JobRequest?
+        /// Paused by `pause(_:)` until `resume(_:)`; memory only.
+        var paused = false
     }
 
     /// A file `remove(ids:trashFiles:)` could not move to the Trash.
@@ -276,6 +278,13 @@ final class JobStore {
 
     func cancel(_ id: String) {
         Task { await runner.cancel(id: id) }
+    }
+
+    /// Pauses or resumes the running job `id`; the card switches at once, the runner follows.
+    func setPaused(_ id: String, _ paused: Bool) {
+        guard let index = items.firstIndex(where: { $0.id == id }) else { return }
+        items[index].paused = paused
+        Task { paused ? await runner.pause(id: id) : await runner.resume(id: id) }
     }
 
     /// Starts the finished job `id` again from its request, with the current settings and its

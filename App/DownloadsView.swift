@@ -435,7 +435,7 @@ enum DownloadFilter: CaseIterable, Identifiable {
 
 /// One job: title and state, then segment, duration, size, progress, then the buttons: Play (once done), Open Page,
 /// Reveal in Finder, Retry (once finished, this session's jobs only), Archive or Unarchive, and Remove, with the message
-/// and Cancel on the right. Selected adds an accent
+/// and Pause (or Resume) and Cancel on the right. Selected adds an accent
 /// fill and stroke.
 private struct DownloadCard: View {
     let item: JobStore.Item
@@ -466,7 +466,7 @@ private struct DownloadCard: View {
                           ? status.outputs.map { URL(filePath: $0).lastPathComponent }.joined(separator: "\n")
                           : displayName)
                 Spacer(minLength: 8)
-                StateBadge(state: status.state)
+                StateBadge(state: status.state, paused: item.paused)
             }
             HStack(spacing: 12) {
                 Text("Segment \(min(status.segmentIndex + 1, status.segmentCount))/\(status.segmentCount)")
@@ -568,6 +568,10 @@ private struct DownloadCard: View {
                         .lineLimit(3)
                 }
                 if !status.state.isFinished {
+                    Button(item.paused ? "Resume" : "Pause") { store.setPaused(item.id, !item.paused) }
+                        .buttonStyle(RowTextButtonStyle())
+                        .fixedSize()
+                        .help(item.paused ? "Resume the download" : "Pause the download")
                     Button("Cancel") { store.cancel(item.id) }
                         .buttonStyle(RowTextButtonStyle())
                         .fixedSize()
@@ -716,16 +720,19 @@ private struct NoticeBox: View {
 /// The job's state as a colored capsule, as tall as the card's buttons.
 private struct StateBadge: View {
     let state: JobState
+    /// Shows Paused instead of Queued or Running.
+    var paused = false
 
     var body: some View {
         let (title, color): (String, Color) = switch state {
+        case .queued where paused, .running where paused: ("Paused", .yellow)
         case .queued: ("Queued", .secondary)
         case .running: ("Running", .accentColor)
         case .done: ("Done", .green)
         case .failed: ("Failed", .red)
         case .cancelled: ("Cancelled", .orange)
         }
-        let solid = state == .running
+        let solid = state == .running && !paused
         Text(title)
             .font(.callout.weight(.semibold))
             // Running is solid accent with white text: the accent on its own tint was hard to read.
