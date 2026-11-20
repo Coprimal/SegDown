@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.7] - 2026-11-19
+
+### Added
+
+- Running downloads have a Pause button next to Cancel; it turns into Resume, and the state badge shows "Paused" meanwhile.
+
 ## [0.7.6] - 2026-11-18
 
 ### Changed
