@@ -42,6 +42,8 @@ final class JobStore {
         let request: JobRequest?
         /// Paused by `pause(_:)` until `resume(_:)`; memory only.
         var paused = false
+        /// Set by `cancel(_:)` until the runner reports the job finished; memory only.
+        var cancelling = false
     }
 
     /// A file `remove(ids:trashFiles:)` could not move to the Trash.
@@ -200,9 +202,10 @@ final class JobStore {
             let gone = ended.values.map(\.status).filter { ids?.contains($0.id) ?? true }
             return .status(selected.map(\.status) + gone)
         case let .cancel(id):
-            guard items.contains(where: { $0.id == id }) else {
+            guard let index = items.firstIndex(where: { $0.id == id }) else {
                 return .error(code: IPCResponse.ErrorCode.notFound, message: "No job with that id")
             }
+            items[index].cancelling = true
             await runner.cancel(id: id)
             return .cancelled(id: id)
         case let .probe(source):
@@ -276,7 +279,9 @@ final class JobStore {
 
     // MARK: - Jobs
 
+    /// Cancels the job `id`; the card shows Cancelling at once, the runner follows.
     func cancel(_ id: String) {
+        if let index = items.firstIndex(where: { $0.id == id }) { items[index].cancelling = true }
         Task { await runner.cancel(id: id) }
     }
 

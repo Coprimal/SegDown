@@ -572,10 +572,22 @@ private struct DownloadCard: View {
                         .buttonStyle(RowTextButtonStyle())
                         .fixedSize()
                         .help(item.paused ? "Resume the download" : "Pause the download")
-                    Button("Cancel") { store.cancel(item.id) }
-                        .buttonStyle(RowTextButtonStyle())
-                        .fixedSize()
-                        .help("Cancel the download")
+                        .disabled(item.cancelling)
+                    Button {
+                        if !item.cancelling { store.cancel(item.id) }
+                    } label: {
+                        if item.cancelling {
+                            HStack(spacing: 5) {
+                                ProgressView().controlSize(.mini)
+                                Text("Cancelling…")
+                            }
+                        } else {
+                            Text("Cancel")
+                        }
+                    }
+                    .buttonStyle(RowTextButtonStyle())
+                    .fixedSize()
+                    .help(item.cancelling ? "Cancelling the download" : "Cancel the download")
                 }
             }
             .padding(.top, 6)
