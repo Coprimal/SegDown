@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.8] - 2026-11-27
+
+### Added
+
+- The Cancel button shows a spinner while a download is being cancelled.
+- The Invisible mode notice in Downloads has a Turn Off button.
+
+### Fixed
+
+- A video whose first segment holds no video data no longer fails the whole download. SegDown skips such segments and shows a warning.
+
 ## [0.7.7] - 2026-11-19
 
 ### Added
