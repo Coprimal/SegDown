@@ -4,6 +4,15 @@
         <title>SegDown</title>
         <link>https://segdown.coprimal.dev/appcast.xml</link>
         <item>
+            <title>0.7.8</title>
+            <pubDate>Fri, 27 Nov 2026 03:47:25 -0600</pubDate>
+            <sparkle:fullReleaseNotesLink>https://github.com/Coprimal/SegDown/blob/main/CHANGELOG.md</sparkle:fullReleaseNotesLink>
+            <sparkle:version>28</sparkle:version>
+            <sparkle:shortVersionString>0.7.8</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/Coprimal/SegDown/releases/download/v0.7.8/SegDown-0.7.8.zip" length="7846908" type="application/octet-stream" sparkle:edSignature="YiQl8SpwrfP7sJWWSYaQIoUz76+3/wMngRBVIBUyC53AoZzA4lckRAvrMHD5viUsahBHflcg7NlA1+j0IJTMBA=="/>
+        </item>
+        <item>
             <title>0.7.7</title>
             <pubDate>Thu, 19 Nov 2026 19:52:58 -0600</pubDate>
             <sparkle:fullReleaseNotesLink>https://github.com/Coprimal/SegDown/blob/main/CHANGELOG.md</sparkle:fullReleaseNotesLink>

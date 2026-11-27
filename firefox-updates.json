@@ -81,6 +81,11 @@
           "version": "0.7.7",
           "update_link": "https://github.com/Coprimal/SegDown/releases/download/v0.7.7/SegDown-firefox-0.7.7.xpi",
           "update_hash": "sha256:159119a89260eb398c05c5ad698465c701e801fd94f1c1c7af19501296a5885c"
+        },
+        {
+          "version": "0.7.8",
+          "update_link": "https://github.com/Coprimal/SegDown/releases/download/v0.7.8/SegDown-firefox-0.7.8.xpi",
+          "update_hash": "sha256:bc3d220294a4c5582ad81bb1bde54e39c466e4fdcd8b912a5ff52fe223dbc9e8"
         }
       ]
     }
