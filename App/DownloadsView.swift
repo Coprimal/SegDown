@@ -119,6 +119,7 @@ struct DownloadsView: View {
                         .font(.callout)
                         .foregroundStyle(.secondary)
                     OpenOutputFolderButton(store: store)
+                    TurnOffInvisibleButton(store: store)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 16)
@@ -774,6 +775,18 @@ private struct OpenOutputFolderButton: View {
     }
 }
 
+/// Turns Invisible mode off at once, as the Settings switch does (no confirmation: turning it off removes nothing).
+private struct TurnOffInvisibleButton: View {
+    let store: JobStore
+
+    var body: some View {
+        Button("Turn Off") { store.setInvisibleMode(false) }
+            .buttonStyle(RowTextButtonStyle())
+            .fixedSize()
+            .help("Turn off Invisible mode: finished downloads stay in the list again")
+    }
+}
+
 /// No jobs yet: how to start one from the browser. With Invisible mode on: why the list is empty, and where the
 /// files are.
 private struct EmptyDownloads: View {
@@ -787,7 +800,10 @@ private struct EmptyDownloads: View {
                 Text("Only downloads in progress are shown here. Finished, failed and cancelled downloads leave this "
                     + "list and are not kept in history. Your files are still on disk, in the output folder.")
                     .foregroundStyle(.secondary)
-                OpenOutputFolderButton(store: store)
+                HStack(spacing: 8) {
+                    OpenOutputFolderButton(store: store)
+                    TurnOffInvisibleButton(store: store)
+                }
             } else {
                 Label("No downloads yet", systemImage: "arrow.down.circle")
                     .font(.title3.weight(.semibold))
