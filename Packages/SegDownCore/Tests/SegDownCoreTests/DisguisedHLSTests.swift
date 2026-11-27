@@ -126,12 +126,21 @@ struct DisguisedHLSTests {
     }
 
     @Test func emptyWarningNamesTheSkippedSegments() {
-        #expect(DisguisedHLS.emptyWarning([:]) == nil)
-        #expect(DisguisedHLS.emptyWarning([4: 90]) == "Segment 4 has no video data "
+        func image(_ number: Int, _ bytes: Int64) -> DisguisedHLS.EmptySegment {
+            DisguisedHLS.EmptySegment(number: number, bytes: bytes, image: true)
+        }
+        let other = { DisguisedHLS.EmptySegment(number: $0, bytes: 30, image: false) }
+        #expect(DisguisedHLS.emptyWarning([]) == nil)
+        #expect(DisguisedHLS.emptyWarning([image(4, 90)]) == "Segment 4 has no video data "
             + "(the server returned only a 90-byte image); this video is broken on the site")
-        #expect(DisguisedHLS.emptyWarning([11: 90, 4: 90]) == "Segments 4, 11 have no video data "
+        #expect(DisguisedHLS.emptyWarning([image(11, 90), image(4, 90)]) == "Segments 4, 11 have no video data "
             + "(the server returned only 90-byte images); this video is broken on the site")
-        #expect(DisguisedHLS.emptyWarning([4: 90, 5: 120])?.contains("returned only images") == true)
+        #expect(DisguisedHLS.emptyWarning([image(4, 90), image(5, 120)])?.contains("returned only images") == true)
+        #expect(DisguisedHLS.emptyWarning([other(1)])
+            == "Segment 1 has no MPEG-TS video data (the server returned something else)")
+        #expect(DisguisedHLS.emptyWarning([other(7), image(4, 90), other(1)]) == "Segment 4 has no video data "
+            + "(the server returned only a 90-byte image); this video is broken on the site; "
+            + "Segments 1, 7 have no MPEG-TS video data (the server returned something else)")
     }
 
     /// The size cap counts staged segments while they download, and no longer once they move into
@@ -245,10 +254,12 @@ struct DisguisedHLSTests {
             _ = try await download("/empty.png", to: "empty.ts")
         }
         #expect(empty?.bytes == 90)
-        // A short body that is no image (an error page) still fails: it is not the cover alone.
-        await #expect(throws: JobError.processFailed("Segment 1 is not MPEG-TS")) {
+        #expect(empty?.image == true)
+        // A body with no TS that is no image (an error page): empty too, but not the cover alone.
+        let other = await #expect(throws: DisguisedHLS.EmptySegment.self) {
             _ = try await download("/error", to: "error.ts")
         }
+        #expect(other?.image == false)
     }
 }
 

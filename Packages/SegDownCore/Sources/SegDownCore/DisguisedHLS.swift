@@ -7,8 +7,8 @@ import Foundation
 
 enum DisguisedHLS {
     /// Bytes of the first segment read to detect a disguise; also the head of each downloaded
-    /// segment searched for its TS start, and its write chunk size. A segment that ends within it
-    /// holding no TS is an `EmptySegment`, skipped with a warning.
+    /// segment searched for its TS start, and its write chunk size. A segment with no TS in it is
+    /// an `EmptySegment`, skipped with a warning.
     static let probeBytes = 64 * 1024
     /// Segments larger than this are rejected, also without a job size cap; real ones are a few MB.
     static let maxSegmentBytes: Int64 = 256 * 1024 * 1024
@@ -174,27 +174,41 @@ enum DisguisedHLS {
             || (starts(Array("RIFF".utf8)) && starts(Array("WEBP".utf8), at: 8))
     }
 
-    /// A disguised segment (`stripPrefix`) whose whole body, `bytes` long, is under `probeBytes`,
-    /// holds no MPEG-TS and starts like an image (`isImage`): the server returned only the cover
-    /// image. Any other short body without TS (empty, an error page) still fails the job. `JobRunner` skips it and warns
+    /// A disguised segment (`stripPrefix`) with no MPEG-TS in its first `probeBytes`. `image` when
+    /// its whole body, `bytes` long, is under `probeBytes` and starts like an image (`isImage`):
+    /// the server returned only the cover image. Else something else (an error page, a file of
+    /// another format), and `bytes` counts only what was read. `JobRunner` skips it and warns
     /// (`emptyWarning`). Not a `JobError` case: those go on the wire.
     struct EmptySegment: Error {
         var number: Int
         var bytes: Int64
+        var image: Bool
     }
 
-    /// The warning for the skipped empty segments, `[number: bytes]`; nil when there are none.
-    static func emptyWarning(_ empty: [Int: Int64]) -> String? {
-        guard !empty.isEmpty else { return nil }
-        let numbers = empty.keys.sorted().map(String.init).joined(separator: ", ")
-        let sizes = Set(empty.values)
-        if empty.count == 1, let size = sizes.first {
-            return "Segment \(numbers) has no video data (the server returned only a \(size)-byte image); "
-                + "this video is broken on the site"
+    /// The warning for the skipped empty segments; nil when there are none.
+    static func emptyWarning(_ empty: [EmptySegment]) -> String? {
+        var parts: [String] = []
+        let images = empty.filter(\.image)
+        if !images.isEmpty {
+            let numbers = images.map(\.number).sorted().map(String.init).joined(separator: ", ")
+            let sizes = Set(images.map(\.bytes))
+            if images.count == 1, let size = sizes.first {
+                parts.append("Segment \(numbers) has no video data (the server returned only a \(size)-byte image); "
+                    + "this video is broken on the site")
+            } else {
+                let kind = sizes.count == 1 ? "\(sizes.first!)-byte images" : "images"
+                parts.append("Segments \(numbers) have no video data (the server returned only \(kind)); "
+                    + "this video is broken on the site")
+            }
         }
-        let images = sizes.count == 1 ? "\(sizes.first!)-byte images" : "images"
-        return "Segments \(numbers) have no video data (the server returned only \(images)); "
-            + "this video is broken on the site"
+        let others = empty.filter { !$0.image }.map(\.number).sorted()
+        if !others.isEmpty {
+            let numbers = others.map(String.init).joined(separator: ", ")
+            parts.append(others.count == 1
+                ? "Segment \(numbers) has no MPEG-TS video data (the server returned something else)"
+                : "Segments \(numbers) have no MPEG-TS video data (the server returned something else)")
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: "; ")
     }
 
     /// Where source time `time` falls in a local playlist of `segments[range]` without the indices
@@ -231,8 +245,8 @@ enum DisguisedHLS {
     /// by one. Only the first `probeBytes` (plus the chunks not yet written) are held in memory to
     /// find that start; the rest streams into `file` in chunks, so the job's size cap, which watches
     /// the temp dir, and a cancel can stop it. Throws when it is larger than `maxSegmentBytes`, holds
-    /// no MPEG-TS (`stripPrefix`; `EmptySegment` when the whole body is shorter than `probeBytes`),
-    /// or the task is cancelled. On a throw `file` may hold a partial
+    /// no MPEG-TS in its first `probeBytes` (`stripPrefix`: `EmptySegment`, without reading the
+    /// rest), or the task is cancelled. On a throw `file` may hold a partial
     /// segment: the caller removes it.
     static func download(
         _ segment: HLSMediaSegment, number: Int, headers: [String: String], source: URL, to file: URL,
@@ -260,9 +274,8 @@ enum DisguisedHLS {
             var start = 0
             if stripPrefix, !foundStart {
                 guard let offset = tsStart(in: buffer.prefix(probeBytes)) else {
-                    // The whole body is a short image: the cover alone, the video data gone.
-                    if atEnd, isImage(buffer) { throw EmptySegment(number: number, bytes: received) }
-                    throw JobError.processFailed("Segment \(number) is not MPEG-TS")
+                    // A whole body that is a short image is the cover alone, the video data gone.
+                    throw EmptySegment(number: number, bytes: received, image: atEnd && isImage(buffer))
                 }
                 start = offset
                 foundStart = true

@@ -47,9 +47,9 @@ public actor JobRunner {
         /// Pieces `downloadPieces` keeps in flight; lowered on refusals, kept for the rest of the
         /// job (every window, the fallback attempt too).
         var pieceLimit = DisguisedHLS.parallelPieces
-        /// Playlist positions (1-based) of the skipped empty segments and their sizes
-        /// (`DisguisedHLS.EmptySegment`), across every window: the done job's `warning`.
-        var emptySegments: [Int: Int64] = [:]
+        /// The skipped empty segments (`DisguisedHLS.EmptySegment`) by playlist position
+        /// (1-based), across every window: the done job's `warning`.
+        var emptySegments: [Int: DisguisedHLS.EmptySegment] = [:]
     }
 
     private let binaries: Binaries
@@ -161,7 +161,7 @@ public actor JobRunner {
                 message: jobs[id]?.compressionFailed == true ? "Compression failed; saved uncompressed" : nil,
                 outputs: outputs.map(\.path)
             )
-            final.warning = DisguisedHLS.emptyWarning(jobs[id]?.emptySegments ?? [:])
+            final.warning = DisguisedHLS.emptyWarning(Array((jobs[id]?.emptySegments ?? [:]).values))
         } catch {
             // Checked first: an abort goes through the cancel path, so `cancelled` is set too.
             if let reason = jobs[id]?.abortReason {
@@ -768,14 +768,12 @@ public actor JobRunner {
             id: id, pieces: pieces, headers: headers, source: source, tracker: tracker
         )
         try checkCancelled(id)
-        for segment in empty { jobs[id]?.emptySegments[segment.number] = segment.bytes }
+        for segment in empty { jobs[id]?.emptySegments[segment.number] = segment }
         let skipped = Set(empty.map { $0.number - 1 })
         // Positions in the window (`files.segments`), not playlist indices.
         let kept = (0..<range.count).filter { !skipped.contains(range.lowerBound + $0) }
         guard !kept.isEmpty else {
-            throw JobError.invalid(DisguisedHLS.emptyWarning(
-                Dictionary(uniqueKeysWithValues: empty.map { ($0.number, $0.bytes) })
-            ) ?? "No segment has video data")
+            throw JobError.invalid(DisguisedHLS.emptyWarning(empty) ?? "No segment has video data")
         }
         // A rename: the playlist lists bare names, so they resolve next to it.
         try FileManager.default.createDirectory(at: files.folder, withIntermediateDirectories: true)
